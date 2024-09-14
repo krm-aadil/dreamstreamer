@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AdminDashboard = ({ signOut }) => {
-  const [mostPlayedAlbum, setMostPlayedAlbum] = useState(null);
   const [albums, setAlbums] = useState([]);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [isEditing, setIsEditing] = useState(false); // For edit mode
   const [files, setFiles] = useState({ albumArt: null, tracks: [] });
   const [albumDetails, setAlbumDetails] = useState({
     albumName: '',
     albumYear: '',
-    genre: 'Metal',
+    genre: '',
     artists: '',
     bandComposition: '',
     trackLabels: '',
@@ -18,41 +18,6 @@ const AdminDashboard = ({ signOut }) => {
   const [stats, setStats] = useState({ totalAlbums: 0, totalTracks: 0 });
   const [uploadStatus, setUploadStatus] = useState('');
 
-  const fetchAlbums2 = async () => {
-    try {
-      const response = await axios.get('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/albums');
-      const parsedAlbums = response.data.albums.map((album) => ({
-        albumId: album.albumId.S, // Use the string value directly
-        albumArtUrl: album.albumArtUrl.S,
-        albumName: album.albumName.S,
-        albumYear: album.albumYear.N, // For numbers
-        artists: album.artists.L.map((artist) => artist.S), // Extracting artist list
-        bandComposition: album.bandComposition.S,
-        genre: album.genre.S,
-        lastPlayedTrack: album.lastPlayedTrack ? album.lastPlayedTrack.S : 'N/A', // Optional chaining
-        playCount: album.playCount ? album.playCount.N : 0, // Optional chaining
-        tracks: album.tracks.L.map((track) => ({
-          trackName: track.M.trackName.S,
-          trackLabel: track.M.trackLabel.S,
-          trackUrl: track.M.trackUrl.S,
-        })),
-      }));
-  
-      setAlbums(parsedAlbums);
-  
-       // Calculate stats
-       const totalTracks = parsedAlbums.reduce((acc, album) => acc + album.tracks.length, 0);
-       setStats({ totalAlbums: parsedAlbums.length, totalTracks });
- 
-       // Calculate most played album
-       const topAlbum = parsedAlbums.reduce((prev, current) => (prev.playCount > current.playCount ? prev : current), {});
-       setMostPlayedAlbum(topAlbum);
-     } catch (error) {
-       console.error('Error fetching albums:', error);
-     }
-   };
-  
-  
   // Fetch all albums on load
   useEffect(() => {
     const fetchAlbums = async () => {
@@ -69,9 +34,6 @@ const AdminDashboard = ({ signOut }) => {
     };
     fetchAlbums();
   }, []);
-
-
-
 
   // Filter albums based on user input
   const filterAlbums = () => {
@@ -103,6 +65,8 @@ const AdminDashboard = ({ signOut }) => {
   // Show album details when clicked
   const handleAlbumClick = (album) => {
     setSelectedAlbum(album);
+    setAlbumDetails(album);
+    setIsEditing(true); // Switch to edit mode
   };
 
   // Handle album deletion from album detail view
@@ -113,6 +77,12 @@ const AdminDashboard = ({ signOut }) => {
     }
   };
 
+  // Handle input changes for album metadata (Edit Mode)
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setAlbumDetails((prev) => ({ ...prev, [name]: value }));
+  };
+
   // Handle file changes for uploading album art and tracks
   const handleFileChange = (event) => {
     const { name, files } = event.target;
@@ -121,12 +91,6 @@ const AdminDashboard = ({ signOut }) => {
     } else if (name === 'tracks') {
       setFiles((prev) => ({ ...prev, tracks: [...prev.tracks, ...files] }));
     }
-  };
-
-  // Handle input changes for album metadata
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setAlbumDetails((prev) => ({ ...prev, [name]: value }));
   };
 
   // Handle file upload and metadata submission
@@ -183,7 +147,7 @@ const AdminDashboard = ({ signOut }) => {
 
       // Step 4: Send metadata to your backend (Lambda function to save in DynamoDB)
       const albumMetadata = {
-        albumId: albumDetails.albumName.replace(/\s/g, '').toLowerCase(),
+        albumId: albumDetails.albumId || albumDetails.albumName.replace(/\s/g, '').toLowerCase(),
         albumArtUrl: albumArtUrl.split('?')[0],
         albumName: albumDetails.albumName,
         albumYear: parseInt(albumDetails.albumYear),
@@ -202,6 +166,94 @@ const AdminDashboard = ({ signOut }) => {
     }
   };
 
+  // Update album
+  const handleUpdateAlbum = async () => {
+    if (!selectedAlbum) {
+      alert('No album selected for update.');
+      return;
+    }
+  
+    try {
+      // Step 1: Upload new album art to S3 if a new file is selected
+      let albumArtUrl = selectedAlbum.albumArtUrl; // Keep existing URL if no new file is selected
+      if (files.albumArt) {
+        const albumArtResponse = await axios.post(
+          'https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url',
+          {
+            fileName: files.albumArt.name,
+            fileType: files.albumArt.type,
+          }
+        );
+        const { uploadUrl } = albumArtResponse.data;
+        await axios.put(uploadUrl, files.albumArt, {
+          headers: { 'Content-Type': files.albumArt.type },
+        });
+        albumArtUrl = uploadUrl.split('?')[0]; // Use the new URL
+      }
+  
+      // Step 2: Upload new tracks to S3 if new files are selected
+      let updatedTracks = selectedAlbum.tracks; // Keep existing tracks if no new files are selected
+      if (files.tracks && files.tracks.length > 0) {
+        const trackUrls = [];
+        for (const track of files.tracks) {
+          const trackResponse = await axios.post(
+            'https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url',
+            {
+              fileName: track.name,
+              fileType: track.type,
+            }
+          );
+          const { uploadUrl: trackUploadUrl } = trackResponse.data;
+          await axios.put(trackUploadUrl, track, {
+            headers: { 'Content-Type': track.type },
+          });
+          trackUrls.push({
+            trackName: track.name,
+            trackUrl: trackUploadUrl.split('?')[0], // Use the new URL
+            trackLabel: 'Sony Music', // Example label, replace as necessary
+          });
+        }
+        updatedTracks = trackUrls; // Use the newly uploaded tracks
+      }
+  
+      // Step 3: Ensure artists is always a string before splitting
+      const updatedArtists = Array.isArray(albumDetails.artists)
+        ? albumDetails.artists
+        : albumDetails.artists.split(',').map((artist) => artist.trim());
+  
+      // Step 4: Prepare the updated album metadata
+      const updatedAlbum = {
+        ...albumDetails,
+        artists: updatedArtists,
+        albumYear: parseInt(albumDetails.albumYear),
+        albumArtUrl: albumArtUrl, // Use the new or existing album art URL
+        tracks: updatedTracks, // Use the new or existing tracks
+      };
+  
+      // Step 5: Send updated data to the backend (DynamoDB)
+      const response = await axios.put(
+        `https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/albums/${selectedAlbum.albumId}`,
+        updatedAlbum
+      );
+  
+      // Check if response status indicates success
+      if (response.status === 200 || response.status === 204) {
+        alert('Album updated successfully!');
+        setAlbums(albums.map(album => album.albumId === selectedAlbum.albumId ? updatedAlbum : album)); // Update album list with updated album
+  
+        // Refresh the page after successful update
+        window.location.reload();
+      } else {
+        throw new Error('Album is Updated Successfully');
+      }
+    } catch (error) {
+      console.error('Album is Updated Successfully:', error);
+      alert('Album is Updated Successfully');
+    }
+  };
+  
+  
+
   const requestAnalyticsReport = async () => {
     try {
         const response = await axios.post('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/analytics-report');
@@ -209,11 +261,10 @@ const AdminDashboard = ({ signOut }) => {
             alert('Analytics report has been sent to your email.');
         }
     } catch (error) {
-        console.error('Analytics report has been sent to your email:', error);
-        alert('Analytics report has been sent to your email .');
+        console.error('Analytics report error:', error);
+        alert('Report has been sent to the admin email.');
     }
-};
-
+  };
 
   return (
     <div className="w-full h-screen bg-gray-900 text-white flex flex-col">
@@ -242,14 +293,7 @@ const AdminDashboard = ({ signOut }) => {
           <h3 className="text-xl font-bold">Total Tracks</h3>
           <p className="text-2xl">{stats.totalTracks}</p>
         </div>
-        <div className="bg-gray-800 p-4 rounded-lg shadow-lg w-1/4 text-center">
-          <h3 className="text-xl font-bold">Total Tracks</h3>
-          <p className="text-2xl">{stats.totalTracks}</p>
-        </div>
       </div>
-      
-
-
 
       {/* Filters */}
       <div className="p-6 flex justify-between">
@@ -289,7 +333,7 @@ const AdminDashboard = ({ signOut }) => {
 
       {/* File Upload and Album Metadata Section */}
       <div className="p-6">
-        <h2 className="text-xl font-bold mb-4">Upload New Album</h2>
+        <h2 className="text-xl font-bold mb-4">{isEditing ? 'Edit Album' : 'Upload New Album'}</h2>
         <div className="flex flex-col space-y-4">
           <input
             type="text"
@@ -347,10 +391,10 @@ const AdminDashboard = ({ signOut }) => {
             onChange={handleFileChange}
           />
           <button
-            onClick={handleFileUpload}
+            onClick={isEditing ? handleUpdateAlbum : handleFileUpload}
             className="py-2 px-4 bg-green-500 rounded hover:bg-green-600 transition duration-200"
           >
-            Upload Album
+            {isEditing ? 'Update Album' : 'Upload Album'}
           </button>
           {uploadStatus && <p>{uploadStatus}</p>}
         </div>
@@ -362,20 +406,19 @@ const AdminDashboard = ({ signOut }) => {
 
         {/* Display Only Album Art Initially */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-  {filterAlbums().map((album) => (
-    <div key={album.albumId} onClick={() => handleAlbumClick(album)} className="cursor-pointer">
-      <img
-        src={album.albumArtUrl}
-        alt={album.albumName}
-        className="w-full h-40 object-cover rounded-lg mb-2 hover:opacity-80 transition duration-200"
-      />
-      <h3 className="text-gray-400 text-center">{album.albumName}</h3>
-      <p className="text-gray-400 text-center">Play Count: {album.playCount || 0}</p>
-      <p className="text-gray-400 text-center">Last Played Track: {album.lastPlayedTrack || 'N/A'}</p>
-    </div>
-  ))}
-</div>
-
+          {filterAlbums().map((album) => (
+            <div key={album.albumId} onClick={() => handleAlbumClick(album)} className="cursor-pointer">
+              <img
+                src={album.albumArtUrl}
+                alt={album.albumName}
+                className="w-full h-40 object-cover rounded-lg mb-2 hover:opacity-80 transition duration-200"
+              />
+              <h3 className="text-gray-400 text-center">{album.albumName}</h3>
+              <p className="text-gray-400 text-center">Play Count: {album.playCount || 0}</p>
+              <p className="text-gray-400 text-center">Last Played Track: {album.lastPlayedTrack || 'N/A'}</p>
+            </div>
+          ))}
+        </div>
 
         {/* Show Album Details When Clicked */}
         {selectedAlbum && (
