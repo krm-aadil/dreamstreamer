@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// File: UploadAlbum.js
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const UploadAlbum = () => {
@@ -6,20 +7,34 @@ const UploadAlbum = () => {
   const [albumDetails, setAlbumDetails] = useState({
     albumName: '',
     albumYear: '',
-    genre: '',
-    artists: '',
-    bandComposition: '',
-    trackLabels: '',
+    genreId: '',
+    selectedArtists: [],
   });
+  const [artists, setArtists] = useState([]);
+  const [genres, setGenres] = useState([]);
   const [uploadStatus, setUploadStatus] = useState('');
 
-  // Handle input changes for album metadata
+  useEffect(() => {
+    // Fetch artists and genres when the component mounts
+    const fetchArtistsAndGenres = async () => {
+      try {
+        const artistsResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-artists');
+        const genresResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-genres');
+        setArtists(artistsResponse.data);
+        setGenres(genresResponse.data);
+      } catch (error) {
+        console.error('Error fetching artists and genres:', error);
+      }
+    };
+
+    fetchArtistsAndGenres();
+  }, []);
+
   const handleInputChange = (event) => {
     const { name, value } = event.target;
     setAlbumDetails((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle file changes for uploading album art and tracks
   const handleFileChange = (event) => {
     const { name, files } = event.target;
     if (name === 'albumArt') {
@@ -29,7 +44,11 @@ const UploadAlbum = () => {
     }
   };
 
-  // Handle file upload and metadata submission
+  const handleArtistSelection = (event) => {
+    const selectedOptions = Array.from(event.target.selectedOptions, (option) => option.value);
+    setAlbumDetails((prev) => ({ ...prev, selectedArtists: selectedOptions }));
+  };
+
   const handleFileUpload = async () => {
     if (!files.albumArt || files.tracks.length === 0) {
       alert('Please select album art and at least one track.');
@@ -38,34 +57,28 @@ const UploadAlbum = () => {
 
     try {
       // Step 1: Upload album art to S3
-      const albumArtResponse = await axios.post(
-        'https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url',
-        {
-          fileName: files.albumArt.name,
-          fileType: files.albumArt.type,
-        }
-      );
+      const albumArtResponse = await axios.post('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/uploading-s3', {
+        fileName: files.albumArt.name,
+        fileType: files.albumArt.type,
+      });
 
-      const { uploadUrl: albumArtUrl } = albumArtResponse.data;
-      await axios.put(albumArtUrl, files.albumArt, {
+      const albumArtUrl = albumArtResponse.data.uploadUrl.split('?')[0];
+      await axios.put(albumArtResponse.data.uploadUrl, files.albumArt, {
         headers: {
           'Content-Type': files.albumArt.type,
         },
       });
 
-      // Step 2: Upload tracks to S3 and collect track URLs
+      // Step 2: Upload tracks to S3
       const trackUrls = [];
       for (const track of files.tracks) {
-        const trackResponse = await axios.post(
-          'https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url',
-          {
-            fileName: track.name,
-            fileType: track.type,
-          }
-        );
+        const trackResponse = await axios.post('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/uploading-s3', {
+          fileName: track.name,
+          fileType: track.type,
+        });
 
-        const { uploadUrl: trackUploadUrl } = trackResponse.data;
-        await axios.put(trackUploadUrl, track, {
+        const trackUrl = trackResponse.data.uploadUrl.split('?')[0];
+        await axios.put(trackResponse.data.uploadUrl, track, {
           headers: {
             'Content-Type': track.type,
           },
@@ -73,32 +86,28 @@ const UploadAlbum = () => {
 
         trackUrls.push({
           trackName: track.name,
-          trackUrl: trackUploadUrl.split('?')[0], // Clean URL
-          trackLabel: 'Sony Music', // Example track label
+          trackUrl,
+          trackLabel: 'Sony Music', // Example label
         });
       }
 
-      // Step 3: Ensure artists are sent as a List (array of strings)
-      const artistsArray = albumDetails.artists.split(',').map((artist) => artist.trim());
-
-      // Step 4: Send metadata to your backend (Lambda function to save in DynamoDB)
+      // Step 3: Send album metadata to backend
       const albumMetadata = {
-        albumId: albumDetails.albumId || albumDetails.albumName.replace(/\s/g, '').toLowerCase(),
-        albumArtUrl: albumArtUrl.split('?')[0],
+        albumId: albumDetails.albumName.replace(/\s/g, '').toLowerCase(),
+        albumArtUrl,
         albumName: albumDetails.albumName,
         albumYear: parseInt(albumDetails.albumYear),
-        genre: albumDetails.genre,
-        artists: artistsArray,
-        bandComposition: albumDetails.bandComposition,
+        genreId: albumDetails.genreId,
+        artists: albumDetails.selectedArtists,
         tracks: trackUrls,
       };
 
-      await axios.post('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/albums', albumMetadata);
+      await axios.post('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-albums', albumMetadata);
 
-      setUploadStatus('Album metadata and files uploaded successfully!');
+      setUploadStatus('Album uploaded successfully!');
     } catch (error) {
-      console.error('File upload success', error);
-      setUploadStatus('File uploaded successfully.');
+      console.error('Error uploading album:', error);
+      setUploadStatus('Failed to upload album.');
     }
   };
 
@@ -115,14 +124,6 @@ const UploadAlbum = () => {
           value={albumDetails.albumName}
         />
         <input
-          type="text"
-          name="genre"
-          placeholder="Genre"
-          className="p-2 bg-gray-800 rounded"
-          onChange={handleInputChange}
-          value={albumDetails.genre}
-        />
-        <input
           type="number"
           name="albumYear"
           placeholder="Album Year"
@@ -130,22 +131,32 @@ const UploadAlbum = () => {
           onChange={handleInputChange}
           value={albumDetails.albumYear}
         />
-        <input
-          type="text"
-          name="artists"
-          placeholder="Artists (comma separated)"
+        <select
+          name="genreId"
           className="p-2 bg-gray-800 rounded"
           onChange={handleInputChange}
-          value={albumDetails.artists}
-        />
-        <input
-          type="text"
-          name="bandComposition"
-          placeholder="Band Composition"
+          value={albumDetails.genreId}
+        >
+          <option value="">Select Genre</option>
+          {genres.map((genre) => (
+            <option key={genre.genreId} value={genre.genreId}>
+              {genre.genreName}
+            </option>
+          ))}
+        </select>
+        <select
+          multiple
           className="p-2 bg-gray-800 rounded"
-          onChange={handleInputChange}
-          value={albumDetails.bandComposition}
-        />
+          onChange={handleArtistSelection}
+          value={albumDetails.selectedArtists}
+        >
+          <option value="">Select Artist(s)</option>
+          {artists.map((artist) => (
+            <option key={artist.artistId} value={artist.artistId}>
+              {artist.artistName}
+            </option>
+          ))}
+        </select>
         <input
           type="file"
           name="albumArt"

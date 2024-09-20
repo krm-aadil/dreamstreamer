@@ -9,16 +9,21 @@ import Home from './pages/Home';
 import DreamStreamer from './components/DreamStreamer/DreamStreamer';
 import { fetchAuthSession } from '@aws-amplify/auth';
 
-// Import the admin components
+// Import admin components
 import AdminLayout from './components/Admin/AdminLayout';
 import Dashboard from './components/Admin/Dashboard';
 import UploadAlbum from './components/Admin/UploadAlbum';
 import EditAlbum from './components/Admin/EditAlbum';
 
+// Import artist components
+import ViewArtists from './components/Admin/ViewArtists'; // New import for viewing artists
+import UploadArtist from './components/Admin/UploadArtist'; // New import for uploading artists
+import EditArtist from './components/Admin/EditArtist'; // New import for editing artists
+
 Amplify.configure(awsExports);
 
 // Define custom purple theme
-const theme: Theme = {
+const theme = {
   name: 'custom-purple-theme',
   tokens: {
     colors: {
@@ -73,31 +78,10 @@ const components = {
     FormFields() {
       return (
         <>
-          {/* Default form fields excluding password and confirm_password */}
           <Authenticator.SignUp.FormFields exclude={['password', 'confirm_password']} />
-
-          {/* Custom form fields */}
-          <TextField
-            label="Full Name"
-            placeholder="Enter your full name"
-            name="name"
-            required
-          />
-          <TextField
-            label="Gender"
-            placeholder="Enter your gender"
-            name="gender"
-            required
-          />
-          <TextField
-            label="Birthdate"
-            placeholder="Enter your birthdate"
-            name="birthdate"
-            type="date"
-            required
-          />
-
-          {/* Only Password field, Confirm Password removed */}
+          <TextField label="Full Name" placeholder="Enter your full name" name="name" required />
+          <TextField label="Gender" placeholder="Enter your gender" name="gender" required />
+          <TextField label="Birthdate" placeholder="Enter your birthdate" name="birthdate" type="date" required />
         </>
       );
     },
@@ -198,11 +182,14 @@ function App({ signOut }) {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="upload" element={<UploadAlbum />} />
         <Route path="edit" element={<EditAlbum />} />
+        {/* New Routes for artists */}
+        <Route path="artists/view" element={<ViewArtists />} />  {/* View all artists */}
+        <Route path="artists/upload" element={<UploadArtist />} /> {/* Upload a new artist */}
+        <Route path="artists/edit" element={<EditArtist />} />  {/* Edit existing artists */}
       </Route>
     </Routes>
   );
 }
-
 
 function AppWithAuth() {
   return (
@@ -210,7 +197,6 @@ function AppWithAuth() {
       <Authenticator formFields={formFields} components={components}>
         {({ signOut, route }) => (
           <>
-            {/* Check if the current route is for authentication pages */}
             {route === 'signIn' || route === 'signUp' || route === 'confirmSignUp' ? (
               <div
                 style={{
@@ -218,11 +204,8 @@ function AppWithAuth() {
                   minHeight: '100vh',
                   backgroundColor: 'black',
                 }}
-              >
-      
-              </div>
+              />
             ) : (
-           
               <Router>
                 <App signOut={signOut} />
               </Router>
