@@ -1,3 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+/* .auth-container {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    width: 400px;
+    margin: 40px auto;
+  }
+  
+  .auth-container h3 {
+    color: #6200ea; 
+  }
+  
+  .amplify-button {
+    background-color: #6200ea !important; 
+    border: none;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0px 8px 15px rgba(98, 0, 234, 0.3); 
+  }
+  
+  .amplify-input {
+    background-color: rgba(255, 255, 255, 0.5);
+    border: 1px solid #6200ea;
+    color: #333;
+  }
+  
+  .amplify-textfield input {
+    color: black;
+  }
+  
+  .amplify-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-image: url('https://raw.githubusercontent.com/krm-aadil/GIT-IMAGES/refs/heads/main/Black___Blue_Minimalist_Modern_Initial_Font_Logo-removebg-preview.png');
+    background-size: cover;
+    background-position: center;
+  }
+   */
