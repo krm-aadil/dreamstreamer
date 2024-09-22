@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 
-/* .auth-container {
+.auth-container {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 16px;
     backdrop-filter: blur(10px);
@@ -14,11 +14,11 @@
   }
   
   .auth-container h3 {
-    color: #6200ea; 
+    color: #141414; 
   }
   
   .amplify-button {
-    background-color: #6200ea !important; 
+    background-color: #00a0ea !important; 
     border: none;
     color: white;
     font-weight: bold;
@@ -27,7 +27,7 @@
   
   .amplify-input {
     background-color: rgba(255, 255, 255, 0.5);
-    border: 1px solid #6200ea;
+    border: 1px solid #00a0ea;
     color: #333;
   }
   
@@ -40,8 +40,7 @@
     align-items: center;
     justify-content: center;
     height: 100vh;
-    background-image: url('https://raw.githubusercontent.com/krm-aadil/GIT-IMAGES/refs/heads/main/Black___Blue_Minimalist_Modern_Initial_Font_Logo-removebg-preview.png');
-    background-size: cover;
-    background-position: center;
-  }
-   */
+      }
+  
+
+   

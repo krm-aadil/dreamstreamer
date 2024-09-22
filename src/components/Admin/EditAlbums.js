@@ -1,293 +1,329 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { FaEdit, FaTrash } from 'react-icons/fa';
+import Select from 'react-select';
 
-const EditAlbum = () => {
+const EditAlbums = () => {
   const [albums, setAlbums] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAlbum, setSelectedAlbum] = useState(null);
-  const [albumDetails, setAlbumDetails] = useState({
+  const [editingAlbum, setEditingAlbum] = useState(null);
+  const [updatedAlbumDetails, setUpdatedAlbumDetails] = useState({
     albumName: '',
     albumYear: '',
-    genre: '',
-    artists: '',
+    genreId: '',
+    albumArtUrl: '',
     bandComposition: '',
-    trackLabels: '',
+    selectedArtists: [],
   });
-  const [files, setFiles] = useState({ albumArt: null, tracks: [] });
+  const [trackDetails, setTrackDetails] = useState([]);
+  const [artists, setArtists] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [albumArtFile, setAlbumArtFile] = useState(null);
+  const [tracks, setTracks] = useState([]);
+  const [uploadStatus, setUploadStatus] = useState('');
 
-  // Fetch all albums on load
   useEffect(() => {
-    const fetchAlbums = async () => {
+    // Fetch albums, artists, and genres when the component mounts
+    const fetchAlbumsAndGenres = async () => {
       try {
-        const response = await axios.get('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/albums');
-        setAlbums(response.data.albums);
+        const albumsResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-albums');
+        const artistsResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-artists');
+        const genresResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-genres');
+        
+        setAlbums(albumsResponse.data);
+        setArtists(artistsResponse.data);
+        setGenres(genresResponse.data);
       } catch (error) {
-        console.error('Error fetching albums:', error);
+        console.error('Error fetching albums, artists, or genres:', error);
       }
     };
-    fetchAlbums();
+
+    fetchAlbumsAndGenres();
   }, []);
 
-  // Filter albums based on search query
-  const filterAlbums = () => {
-    return albums.filter((album) => {
-      return (
-        album.albumName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        album.artists.join(', ').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        album.genre.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    });
-  };
-
-  // Handle album selection
-  const handleAlbumSelect = (album) => {
-    setSelectedAlbum(album);
-    setAlbumDetails({
+  const handleEditAlbum = (album) => {
+    setEditingAlbum(album);
+    setUpdatedAlbumDetails({
       albumName: album.albumName,
       albumYear: album.albumYear,
-      genre: album.genre,
-      artists: album.artists.join(', '),
+      genreId: album.genreId,
+      albumArtUrl: album.albumArtUrl,
       bandComposition: album.bandComposition,
-      trackLabels: '', // You may need to adjust this based on your data
+      selectedArtists: album.artists,
     });
-    setFiles({ albumArt: null, tracks: [] });
+    setTrackDetails(album.tracks || []);
   };
 
-  // Handle input changes for album metadata
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setAlbumDetails((prev) => ({ ...prev, [name]: value }));
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setUpdatedAlbumDetails((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle file changes for uploading album art and tracks
-  const handleFileChange = (event) => {
-    const { name, files } = event.target;
-    if (name === 'albumArt') {
-      setFiles((prev) => ({ ...prev, albumArt: files[0] }));
-    } else if (name === 'tracks') {
-      setFiles((prev) => ({ ...prev, tracks: [...prev.tracks, ...files] }));
-    }
+  const handleArtistSelection = (selectedOptions) => {
+    const selectedArtists = selectedOptions.map(option => option.value);
+    setUpdatedAlbumDetails((prev) => ({ ...prev, selectedArtists }));
   };
 
-  // Delete album function
-  const handleDeleteAlbum = async (albumId) => {
-    const confirmDelete = window.confirm('Are you sure you want to delete this album?');
-    if (!confirmDelete) return;
+  const handleAlbumArtChange = (event) => {
+    setAlbumArtFile(event.target.files[0]);
+  };
 
+  const handleTrackChange = (event) => {
+    const newTracks = Array.from(event.target.files).map((file) => ({
+      trackFile: file,
+      trackName: file.name,
+      trackLabel: '',
+    }));
+    setTracks([...tracks, ...newTracks]);
+  };
+
+  const handleTrackLabelChange = (index, value) => {
+    const updatedTracks = [...trackDetails];
+    updatedTracks[index].trackLabel = value;
+    setTrackDetails(updatedTracks);
+  };
+
+  const handleSaveChanges = async () => {
     try {
-      await axios.delete(`https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/albums/${albumId}`);
-      alert('Album deleted successfully');
-      setAlbums(albums.filter((album) => album.albumId !== albumId)); // Remove the deleted album from state
-      setSelectedAlbum(null);
-    } catch (error) {
-      console.error('Error deleting album:', error);
-      alert('Failed to delete album');
-    }
-  };
+      let albumArtUrl = updatedAlbumDetails.albumArtUrl;
 
-  // Handle album update
-  const handleUpdateAlbum = async () => {
-    if (!selectedAlbum) {
-      alert('No album selected for update.');
-      return;
-    }
-
-    try {
-      // Step 1: Upload new album art to S3 if a new file is selected
-      let albumArtUrl = selectedAlbum.albumArtUrl; // Keep existing URL if no new file is selected
-      if (files.albumArt) {
-        const albumArtResponse = await axios.post(
-          'https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url',
-          {
-            fileName: files.albumArt.name,
-            fileType: files.albumArt.type,
-          }
-        );
-        const { uploadUrl } = albumArtResponse.data;
-        await axios.put(uploadUrl, files.albumArt, {
-          headers: { 'Content-Type': files.albumArt.type },
+      // Upload new album art if a new file is selected
+      if (albumArtFile) {
+        const albumArtResponse = await axios.post('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url', {
+          fileName: albumArtFile.name,
+          fileType: albumArtFile.type,
         });
-        albumArtUrl = uploadUrl.split('?')[0]; // Use the new URL
+        albumArtUrl = albumArtResponse.data.uploadUrl.split('?')[0];
+        await axios.put(albumArtResponse.data.uploadUrl, albumArtFile, {
+          headers: {
+            'Content-Type': albumArtFile.type,
+          },
+        });
       }
 
-      // Step 2: Upload new tracks to S3 if new files are selected
-      let updatedTracks = selectedAlbum.tracks; // Keep existing tracks if no new files are selected
-      if (files.tracks && files.tracks.length > 0) {
-        const trackUrls = [];
-        for (const track of files.tracks) {
-          const trackResponse = await axios.post(
-            'https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url',
-            {
-              fileName: track.name,
-              fileType: track.type,
-            }
-          );
-          const { uploadUrl: trackUploadUrl } = trackResponse.data;
-          await axios.put(trackUploadUrl, track, {
-            headers: { 'Content-Type': track.type },
-          });
-          trackUrls.push({
-            trackName: track.name,
-            trackUrl: trackUploadUrl.split('?')[0], // Use the new URL
-            trackLabel: 'Sony Music', // Example label, replace as necessary
-          });
-        }
-        updatedTracks = [...updatedTracks, ...trackUrls]; // Append new tracks to existing tracks
+      // Upload new tracks if any new files are selected
+      const updatedTracks = [...trackDetails];
+      for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        const trackResponse = await axios.post('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url', {
+          fileName: track.trackFile.name,
+          fileType: track.trackFile.type,
+        });
+        const trackUrl = trackResponse.data.uploadUrl.split('?')[0];
+        await axios.put(trackResponse.data.uploadUrl, track.trackFile, {
+          headers: {
+            'Content-Type': track.trackFile.type,
+          },
+        });
+        updatedTracks.push({
+          trackName: track.trackName,
+          trackUrl,
+          trackLabel: track.trackLabel || 'Default Label', // Default label if not provided
+        });
       }
 
-      // Step 3: Ensure artists is always a string before splitting
-      const updatedArtists = Array.isArray(albumDetails.artists)
-        ? albumDetails.artists
-        : albumDetails.artists.split(',').map((artist) => artist.trim());
-
-      // Step 4: Prepare the updated album metadata
-      const updatedAlbum = {
-        ...selectedAlbum,
-        ...albumDetails,
-        artists: updatedArtists,
-        albumYear: parseInt(albumDetails.albumYear),
-        albumArtUrl: albumArtUrl, // Use the new or existing album art URL
-        tracks: updatedTracks, // Use the new or existing tracks
+      // Update album metadata
+      const updatedAlbumMetadata = {
+        albumName: updatedAlbumDetails.albumName,
+        albumYear: parseInt(updatedAlbumDetails.albumYear),
+        genreId: updatedAlbumDetails.genreId,
+        albumArtUrl,
+        bandComposition: updatedAlbumDetails.bandComposition,
+        artists: updatedAlbumDetails.selectedArtists,
+        tracks: updatedTracks,
       };
 
-      // Step 5: Send updated data to the backend (DynamoDB)
-      const response = await axios.put(
-        `https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/albums/${selectedAlbum.albumId}`,
-        updatedAlbum
+      await axios.put(
+        `https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-albums/${editingAlbum.albumId}`,
+        updatedAlbumMetadata
       );
 
-      if (response.status === 200 || response.status === 204) {
-        alert('Album updated successfully!');
-        setAlbums(albums.map(album => album.albumId === selectedAlbum.albumId ? updatedAlbum : album)); // Update album list with updated album
-        setSelectedAlbum(null);
-        setAlbumDetails({
-          albumName: '',
-          albumYear: '',
-          genre: '',
-          artists: '',
-          bandComposition: '',
-          trackLabels: '',
-        });
-        setFiles({ albumArt: null, tracks: [] });
-      } else {
-        throw new Error('Failed to update album');
-      }
+      // Update the albums state with new values
+      setAlbums((prevAlbums) =>
+        prevAlbums.map((album) =>
+          album.albumId === editingAlbum.albumId ? { ...album, ...updatedAlbumMetadata } : album
+        )
+      );
+      setEditingAlbum(null); // Exit edit mode
+      setUploadStatus('Album updated successfully!');
     } catch (error) {
       console.error('Error updating album:', error);
-      alert('Album is Updated Successfully');
+      setUploadStatus('Failed to update album.');
     }
   };
 
+  const handleDeleteAlbum = async (albumId) => {
+    const confirmed = window.confirm('Are you sure you want to delete this album?');
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-albums/${albumId}`);
+      setAlbums((prevAlbums) => prevAlbums.filter((album) => album.albumId !== albumId));
+    } catch (error) {
+      console.error('Error deleting album:', error);
+    }
+  };
+
+  const artistOptions = artists.map(artist => ({
+    label: artist.artistName,
+    value: artist.artistId,
+  }));
+
   return (
-    <div className="p-6 bg-cyan-100 min-h-screen text-gray-900 font-poppins rounded-lg shadow-md">
-      <h2 className="text-3xl font-bold text-cyan-900 mb-4">Edit Albums</h2>
+    <div className="p-6 text-white flex-grow">
+      <h2 className="text-3xl font-bold mb-4 text-cyan-600">Edit Albums</h2>
 
-      {/* Search Bar */}
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search Albums"
-          className="p-2 bg-white rounded-lg border border-gray-300 w-full"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
-
-      {/* Album List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filterAlbums().map((album) => (
-          <div
-            key={album.albumId}
-            onClick={() => handleAlbumSelect(album)}
-            className="cursor-pointer bg-white p-4 rounded-lg shadow hover:shadow-md transition duration-200"
+      {/* Edit Form */}
+      {editingAlbum && (
+        <div className="mb-6 p-4 bg-cyan-900 rounded-lg shadow-lg text-white">
+          <h3 className="text-lg font-semibold mb-4">Editing {editingAlbum.albumName}</h3>
+          <input
+            type="text"
+            name="albumName"
+            className="p-3 mb-4 bg-cyan-800 rounded-lg text-white w-full"
+            placeholder="Album Name"
+            value={updatedAlbumDetails.albumName}
+            onChange={handleInputChange}
+          />
+          <input
+            type="number"
+            name="albumYear"
+            className="p-3 mb-4 bg-cyan-800 rounded-lg text-white w-full"
+            placeholder="Album Year"
+            value={updatedAlbumDetails.albumYear}
+            onChange={handleInputChange}
+          />
+          <select
+            name="genreId"
+            className="p-3 mb-4 bg-cyan-800 rounded-lg text-white w-full"
+            value={updatedAlbumDetails.genreId}
+            onChange={handleInputChange}
           >
-            <img
-              src={album.albumArtUrl}
-              alt={album.albumName}
-              className="w-full h-40 object-cover rounded-lg mb-2 hover:opacity-80 transition duration-200"
-            />
-            <h3 className="text-cyan-700 text-center">{album.albumName}</h3>
-          </div>
-        ))}
-      </div>
+            <option value="">Select Genre</option>
+            {genres.map((genre) => (
+              <option key={genre.genreId} value={genre.genreId}>
+                {genre.genreName}
+              </option>
+            ))}
+          </select>
+          <Select
+            options={artistOptions}
+            isMulti
+            onChange={handleArtistSelection}
+            value={artistOptions.filter(option => updatedAlbumDetails.selectedArtists.includes(option.value))}
+            className="text-black mb-4"
+          />
+          <input
+            type="text"
+            name="bandComposition"
+            className="p-3 mb-4 bg-cyan-800 rounded-lg text-white w-full"
+            placeholder="Band Composition"
+            value={updatedAlbumDetails.bandComposition}
+            onChange={handleInputChange}
+          />
+          
+          {/* Album Art Input */}
+          <label className="block mb-2 text-lg">Change Album Art (Image)</label>
+          <input
+            type="file"
+            name="albumArt"
+            accept="image/*"
+            className="p-2 mb-4 bg-cyan-800 rounded-lg w-full"
+            onChange={handleAlbumArtChange}
+          />
 
-      {/* Edit Album Form */}
-      {selectedAlbum && (
-        <div className="mt-8">
-          <h3 className="text-2xl font-bold text-cyan-700 mb-4">Edit Album: {selectedAlbum.albumName}</h3>
-          <div className="flex flex-col space-y-4">
-            <input
-              type="text"
-              name="albumName"
-              placeholder="Album Name"
-              className="p-2 bg-white rounded-lg border border-gray-300"
-              onChange={handleInputChange}
-              value={albumDetails.albumName}
-            />
-            <input
-              type="text"
-              name="genre"
-              placeholder="Genre"
-              className="p-2 bg-white rounded-lg border border-gray-300"
-              onChange={handleInputChange}
-              value={albumDetails.genre}
-            />
-            <input
-              type="number"
-              name="albumYear"
-              placeholder="Album Year"
-              className="p-2 bg-white rounded-lg border border-gray-300"
-              onChange={handleInputChange}
-              value={albumDetails.albumYear}
-            />
-            <input
-              type="text"
-              name="artists"
-              placeholder="Artists (comma separated)"
-              className="p-2 bg-white rounded-lg border border-gray-300"
-              onChange={handleInputChange}
-              value={albumDetails.artists}
-            />
-            <input
-              type="text"
-              name="bandComposition"
-              placeholder="Band Composition"
-              className="p-2 bg-white rounded-lg border border-gray-300"
-              onChange={handleInputChange}
-              value={albumDetails.bandComposition}
-            />
-            <input
-              type="file"
-              name="albumArt"
-              accept="image/*"
-              className="p-2 bg-white rounded-lg border border-gray-300"
-              onChange={handleFileChange}
-            />
-            <input
-              type="file"
-              name="tracks"
-              accept="audio/*"
-              multiple
-              className="p-2 bg-white rounded-lg border border-gray-300"
-              onChange={handleFileChange}
-            />
-            <button
-              onClick={handleUpdateAlbum}
-              className="py-2 px-4 bg-cyan-700 text-white rounded-lg hover:bg-cyan-800 transition duration-200"
-            >
-              Update Album
-            </button>
-            <button
-              onClick={() => handleDeleteAlbum(selectedAlbum.albumId)}
-              className="mt-4 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200"
-            >
-              Delete Album
-            </button>
-          </div>
+          {/* Tracks Input */}
+          <label className="block mb-2 text-lg">Replace or Add New Tracks (MP3)</label>
+          <input
+            type="file"
+            name="tracks"
+            accept="audio/*"
+            multiple
+            className="p-2 mb-4 bg-cyan-800 rounded-lg w-full"
+            onChange={handleTrackChange}
+          />
+
+          {/* Existing Tracks */}
+          {trackDetails.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Existing Tracks</h3>
+              {trackDetails.map((track, index) => (
+                <div key={index} className="flex space-x-2 mb-2">
+                  <input
+                    type="text"
+                    className="p-2 bg-cyan-800 rounded-lg text-white w-full"
+                    value={track.trackName}
+                    readOnly
+                  />
+                  <input
+                    type="text"
+                    className="p-2 bg-cyan-800 rounded-lg text-white w-full"
+                    placeholder="Track Label"
+                    value={track.trackLabel}
+                    onChange={(e) => handleTrackLabelChange(index, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={handleSaveChanges}
+            className="py-3 px-6 bg-green-500 rounded-lg hover:bg-green-600 transition duration-200 text-white mr-2"
+          >
+            Save Changes
+          </button>
+          <button
+            onClick={() => setEditingAlbum(null)}
+            className="py-3 px-6 bg-gray-500 rounded-lg hover:bg-gray-600 transition duration-200 text-white"
+          >
+            Cancel
+          </button>
         </div>
       )}
+
+      {/* Albums Table */}
+      <table className="min-w-full bg-cyan-600 text-white rounded-lg shadow-lg overflow-hidden">
+        <thead className="bg-cyan-700">
+          <tr>
+            <th className="py-3 px-6 text-left">Album Name</th>
+            <th className="py-3 px-6 text-left">Album Year</th>
+            <th className="py-3 px-6 text-left">Album Art</th>
+            <th className="py-3 px-6 text-left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {albums.map((album) => (
+            <tr key={album.albumId} className="border-b border-cyan-500 hover:bg-cyan-700">
+              <td className="py-3 px-6">{album.albumName}</td>
+              <td className="py-3 px-6">{album.albumYear}</td>
+              <td className="py-3 px-6">
+                <img
+                  src={album.albumArtUrl}
+                  alt={album.albumName}
+                  className="w-16 h-16 object-cover rounded-full"
+                />
+              </td>
+              <td className="py-3 px-6 flex items-center justify-around">
+                <button
+                  onClick={() => handleEditAlbum(album)}
+                  className="text-blue-400 hover:text-blue-500 mr-4"
+                >
+                  <FaEdit />
+                </button>
+                <button
+                  onClick={() => handleDeleteAlbum(album.albumId)}
+                  className="text-red-400 hover:text-red-500"
+                >
+                  <FaTrash />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {uploadStatus && <p className="mt-4 text-green-500">{uploadStatus}</p>}
     </div>
   );
 };
 
-export default EditAlbum;
+export default EditAlbums;

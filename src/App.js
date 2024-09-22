@@ -1,7 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { Amplify } from 'aws-amplify';
-import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
-import { Authenticator, View, Image, Text, Button, Heading, ThemeProvider, Theme, TextField, useAuthenticator } from '@aws-amplify/ui-react';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+  Navigate,
+} from 'react-router-dom';
+import {
+  Authenticator,
+  View,
+  Image,
+  Text,
+  Button,
+  Heading,
+  ThemeProvider,
+  TextField,
+  useAuthenticator,
+} from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import './index.css'; // Import the custom styles
 import awsExports from './aws-exports';
@@ -26,21 +42,54 @@ import ViewGenres from './components/Admin/ViewGenres';
 import UploadGenre from './components/Admin/UploadGenre'; 
 import EditGenres from './components/Admin/EditGenres'; 
 
-
 //import inventory report path
 import Inventory from './components/Admin/Inventory';
 
 Amplify.configure(awsExports);
 
-// Define custom purple theme
+// Define custom cyan and white theme
 const theme = {
-  name: 'custom-purple-theme',
+  name: 'custom-cyan-theme',
   tokens: {
     colors: {
       brand: {
         primary: {
-          '90': '#6200ea', // Primary purple color
+          '10': '#E0F7FA',
+          '80': '#00838F',
+          '100': '#006064', // Cyan shade
         },
+        secondary: {
+          '10': '#FFFFFF',
+          '100': '#FFFFFF', // White
+        },
+      },
+      background: {
+        primary: {
+          '100': '#FFFFFF', // White background
+        },
+      },
+    },
+    fonts: {
+      default: {
+        family: '"Poppins", sans-serif',
+        size: {
+          medium: '16px',
+          large: '18px',
+        },
+      },
+    },
+    components: {
+      button: {
+        backgroundColor: { primary: { value: '#006064' } }, // Cyan button
+        color: { primary: { value: '#FFFFFF' } }, // White text
+        borderRadius: { value: '8px' },
+        padding: { value: '12px 24px' },
+        fontWeight: { value: '600' },
+      },
+      input: {
+        backgroundColor: { value: '#E0F7FA' }, // Light cyan input field
+        borderColor: { value: '#00838F' }, // Dark cyan border
+        color: { value: '#006064' }, // Cyan text
       },
     },
   },
@@ -63,9 +112,28 @@ const components = {
   Footer() {
     return (
       <View textAlign="center" padding="large">
-        <Text>&copy; {new Date().getFullYear()} All Rights Reserved</Text>
+        <Text color="#00838F">&copy; {new Date().getFullYear()} DreamStreamer. All Rights Reserved.</Text>
       </View>
     );
+  },
+  SignIn: {
+    Header() {
+      return (
+        <Heading level={3} textAlign="center" marginBottom="medium">
+          Welcome Back! Sign in to continue
+        </Heading>
+      );
+    },
+    Footer() {
+      const { toResetPassword } = useAuthenticator();
+      return (
+        <View textAlign="center">
+          <Button onClick={toResetPassword} size="small" variation="link">
+            Forgot your password?
+          </Button>
+        </View>
+      );
+    },
   },
   SignUp: {
     Header() {
@@ -224,7 +292,7 @@ function AppWithAuth() {
                 style={{
                   display: 'flex',
                   minHeight: '100vh',
-                  backgroundColor: 'black',
+                  backgroundColor: '#006064', // Cyan background
                 }}
               />
             ) : (

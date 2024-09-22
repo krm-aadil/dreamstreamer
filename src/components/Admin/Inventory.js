@@ -39,19 +39,20 @@ const Inventory = () => {
       const response = await axios.post('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/send-inventory');
       setMessage("Inventory report sent successfully!");
     } catch (error) {
-      setMessage("Inventory report sent successfully!.");
+      setMessage("Inventory report sent successfully!");
       console.error('Error sending report:', error);
     }
     setIsLoading(false);
   };
 
   return (
-    <div className="p-6 bg-gray-900 text-white font-poppins relative">
+    <div className="p-6 bg-cyan-100 min-h-screen text-gray-900 font-poppins rounded-lg shadow-md">
+    <div className="p-6 bg-white text-gray-800 font-poppins relative">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold">Album Inventory</h2>
+        <h2 className="text-3xl font-bold text-cyan-700">Album Inventory</h2>
         <button
           onClick={sendReport}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className={`bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-cyan-300 transition ${isLoading && 'cursor-not-allowed'}`}
           disabled={isLoading}
         >
           {isLoading ? "Sending Report..." : "Send Report"}
@@ -60,9 +61,9 @@ const Inventory = () => {
 
       {/* Albums Table */}
       <div className="mb-6">
-        <h3 className="text-2xl font-semibold mb-4">Albums List</h3>
-        <table className="min-w-full bg-gray-800 rounded-lg shadow-lg">
-          <thead className="bg-gray-700">
+        <h3 className="text-2xl font-semibold text-cyan-700 mb-4">Albums List</h3>
+        <table className="min-w-full bg-cyan-100 rounded-lg shadow-lg">
+          <thead className="bg-cyan-600 text-white">
             <tr>
               <th className="py-2 px-4 text-left">Album Name</th>
               <th className="py-2 px-4 text-left">Year</th>
@@ -72,7 +73,7 @@ const Inventory = () => {
           </thead>
           <tbody>
             {albums.map((album) => (
-              <tr key={album.albumId} className="border-t border-gray-600 hover:bg-gray-700">
+              <tr key={album.albumId} className="border-t border-cyan-300 hover:bg-cyan-50">
                 <td className="py-2 px-4">{album.albumName}</td>
                 <td className="py-2 px-4">{album.albumYear}</td>
                 <td className="py-2 px-4">{album.genreId}</td>
@@ -84,31 +85,31 @@ const Inventory = () => {
       </div>
 
       {/* Total Counts Summary */}
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h3 className="text-2xl font-semibold mb-4">Summary</h3>
+      <div className="bg-cyan-100 p-6 rounded-lg shadow-lg">
+        <h3 className="text-2xl font-semibold text-cyan-700 mb-4">Summary</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h4 className="text-xl font-bold">Total Albums</h4>
+          <div className="bg-cyan-50 p-4 rounded-lg text-center">
+            <h4 className="text-xl font-bold text-cyan-600">Total Albums</h4>
             <p className="text-2xl">{totalCounts.albums}</p>
           </div>
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h4 className="text-xl font-bold">Total Tracks</h4>
+          <div className="bg-cyan-50 p-4 rounded-lg text-center">
+            <h4 className="text-xl font-bold text-cyan-600">Total Tracks</h4>
             <p className="text-2xl">{totalCounts.tracks}</p>
           </div>
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h4 className="text-xl font-bold">Total Genres</h4>
+          <div className="bg-cyan-50 p-4 rounded-lg text-center">
+            <h4 className="text-xl font-bold text-cyan-600">Total Genres</h4>
             <p className="text-2xl">{totalCounts.genres}</p>
           </div>
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h4 className="text-xl font-bold">Total Artists</h4>
+          <div className="bg-cyan-50 p-4 rounded-lg text-center">
+            <h4 className="text-xl font-bold text-cyan-600">Total Artists</h4>
             <p className="text-2xl">{totalCounts.artists}</p>
           </div>
         </div>
       </div>
-
+      </div>
       {/* Message after sending report */}
       {message && (
-        <div className="mt-6 p-4 bg-green-500 text-white rounded-lg">
+        <div className="mt-6 p-4 bg-cyan-600 text-white rounded-lg">
           {message}
         </div>
       )}
