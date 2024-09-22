@@ -1,6 +1,6 @@
-// File: UploadAlbum.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Select from 'react-select';
 
 const UploadAlbum = () => {
   const [files, setFiles] = useState({ albumArt: null, tracks: [] });
@@ -9,10 +9,13 @@ const UploadAlbum = () => {
     albumYear: '',
     genreId: '',
     selectedArtists: [],
+    bandComposition: '',
   });
+  const [trackDetails, setTrackDetails] = useState([]);
   const [artists, setArtists] = useState([]);
   const [genres, setGenres] = useState([]);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     // Fetch artists and genres when the component mounts
@@ -40,13 +43,25 @@ const UploadAlbum = () => {
     if (name === 'albumArt') {
       setFiles((prev) => ({ ...prev, albumArt: files[0] }));
     } else if (name === 'tracks') {
+      const newTracks = Array.from(files).map((file) => ({
+        trackFile: file,
+        trackName: file.name,
+        trackLabel: '',
+      }));
       setFiles((prev) => ({ ...prev, tracks: [...prev.tracks, ...files] }));
+      setTrackDetails((prev) => [...prev, ...newTracks]);
     }
   };
 
-  const handleArtistSelection = (event) => {
-    const selectedOptions = Array.from(event.target.selectedOptions, (option) => option.value);
-    setAlbumDetails((prev) => ({ ...prev, selectedArtists: selectedOptions }));
+  const handleArtistSelection = (selectedOptions) => {
+    const selectedArtists = selectedOptions.map(option => option.value);
+    setAlbumDetails((prev) => ({ ...prev, selectedArtists }));
+  };
+
+  const handleTrackLabelChange = (index, value) => {
+    const updatedTracks = [...trackDetails];
+    updatedTracks[index].trackLabel = value;
+    setTrackDetails(updatedTracks);
   };
 
   const handleFileUpload = async () => {
@@ -57,7 +72,7 @@ const UploadAlbum = () => {
 
     try {
       // Step 1: Upload album art to S3
-      const albumArtResponse = await axios.post('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/uploading-s3', {
+      const albumArtResponse = await axios.post('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url', {
         fileName: files.albumArt.name,
         fileType: files.albumArt.type,
       });
@@ -71,8 +86,11 @@ const UploadAlbum = () => {
 
       // Step 2: Upload tracks to S3
       const trackUrls = [];
-      for (const track of files.tracks) {
-        const trackResponse = await axios.post('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/uploading-s3', {
+      for (let i = 0; i < files.tracks.length; i++) {
+        const track = files.tracks[i];
+        const trackDetailsEntry = trackDetails[i];
+
+        const trackResponse = await axios.post('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url', {
           fileName: track.name,
           fileType: track.type,
         });
@@ -87,7 +105,7 @@ const UploadAlbum = () => {
         trackUrls.push({
           trackName: track.name,
           trackUrl,
-          trackLabel: 'Sony Music', // Example label
+          trackLabel: trackDetailsEntry.trackLabel || 'Default Label', // Default label if none provided
         });
       }
 
@@ -99,6 +117,7 @@ const UploadAlbum = () => {
         albumYear: parseInt(albumDetails.albumYear),
         genreId: albumDetails.genreId,
         artists: albumDetails.selectedArtists,
+        bandComposition: albumDetails.bandComposition,
         tracks: trackUrls,
       };
 
@@ -110,6 +129,15 @@ const UploadAlbum = () => {
       setUploadStatus('Failed to upload album.');
     }
   };
+
+  const filteredArtists = artists.filter(artist =>
+    artist.artistName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const artistOptions = filteredArtists.map(artist => ({
+    label: artist.artistName,
+    value: artist.artistId,
+  }));
 
   return (
     <div className="p-6 text-white flex-grow">
@@ -144,34 +172,76 @@ const UploadAlbum = () => {
             </option>
           ))}
         </select>
-        <select
-          multiple
-          className="p-2 bg-gray-800 rounded"
-          onChange={handleArtistSelection}
-          value={albumDetails.selectedArtists}
-        >
-          <option value="">Select Artist(s)</option>
-          {artists.map((artist) => (
-            <option key={artist.artistId} value={artist.artistId}>
-              {artist.artistName}
-            </option>
-          ))}
-        </select>
+
+        {/* Artist Selection with Search and Checkbox */}
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Select Artists</h3>
+          <Select
+            options={artistOptions}
+            isMulti
+            onChange={handleArtistSelection}
+            className="text-black"
+          />
+        </div>
+
         <input
-          type="file"
-          name="albumArt"
-          accept="image/*"
+          type="text"
+          name="bandComposition"
+          placeholder="Band Composition"
           className="p-2 bg-gray-800 rounded"
-          onChange={handleFileChange}
+          onChange={handleInputChange}
+          value={albumDetails.bandComposition}
         />
-        <input
-          type="file"
-          name="tracks"
-          accept="audio/*"
-          multiple
-          className="p-2 bg-gray-800 rounded"
-          onChange={handleFileChange}
-        />
+
+        {/* Album Art Input */}
+        <div>
+          <label className="block mb-2">Album Art (Image)</label>
+          <input
+            type="file"
+            name="albumArt"
+            accept="image/*"
+            className="p-2 bg-gray-800 rounded"
+            onChange={handleFileChange}
+          />
+        </div>
+
+        {/* Track Input */}
+        <div>
+          <label className="block mb-2">Tracks (MP3 Files)</label>
+          <input
+            type="file"
+            name="tracks"
+            accept="audio/*"
+            multiple
+            className="p-2 bg-gray-800 rounded"
+            onChange={handleFileChange}
+          />
+        </div>
+
+        {/* Track Details Input */}
+        {trackDetails.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold">Track Details</h3>
+            {trackDetails.map((track, index) => (
+              <div key={index} className="flex space-x-2 mb-2">
+                <input
+                  type="text"
+                  className="p-2 bg-gray-800 rounded w-full"
+                  value={track.trackName}
+                  readOnly
+                />
+                <input
+                  type="text"
+                  className="p-2 bg-gray-800 rounded w-full"
+                  placeholder="Track Label"
+                  value={track.trackLabel}
+                  onChange={(e) => handleTrackLabelChange(index, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         <button
           onClick={handleFileUpload}
           className="py-2 px-4 bg-green-500 rounded hover:bg-green-600 transition duration-200"

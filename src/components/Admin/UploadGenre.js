@@ -26,7 +26,7 @@ const UploadGenre = () => {
 
     try {
       // Step 1: Upload genre image to S3
-      const imageResponse = await axios.post('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/uploading-s3', {
+      const imageResponse = await axios.post('https://hcqsf0khjj.execute-api.us-east-1.amazonaws.com/dev/generate-presigned-url', {
         fileName: genreImage.name,
         fileType: genreImage.type,
       });

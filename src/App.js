@@ -13,12 +13,18 @@ import { fetchAuthSession } from '@aws-amplify/auth';
 import AdminLayout from './components/Admin/AdminLayout';
 import Dashboard from './components/Admin/Dashboard';
 import UploadAlbum from './components/Admin/UploadAlbum';
-import EditAlbum from './components/Admin/EditAlbum';
+import EditAlbums from './components/Admin/EditAlbums';
+import ViewAlbums from './components/Admin/ViewAlbums';
 
 // Import artist components
-import ViewArtists from './components/Admin/ViewArtists'; // New import for viewing artists
-import UploadArtist from './components/Admin/UploadArtist'; // New import for uploading artists
-import EditArtist from './components/Admin/EditArtist'; // New import for editing artists
+import ViewArtists from './components/Admin/ViewArtists';
+import UploadArtist from './components/Admin/UploadArtist';
+import EditArtists from './components/Admin/EditArtists';
+
+// Import genre components
+import ViewGenres from './components/Admin/ViewGenres'; 
+import UploadGenre from './components/Admin/UploadGenre'; 
+import EditGenres from './components/Admin/EditGenres'; 
 
 Amplify.configure(awsExports);
 
@@ -43,7 +49,7 @@ const components = {
       <View textAlign="center" padding="large">
         <Image
           alt="Custom Logo"
-          src="https://github.com/krm-aadil/GIT-IMAGES/blob/main/Black_and_pink_Circle_Music_Logo-removebg-preview.png?raw=true"  // Replace with your logo URL
+          src="https://github.com/krm-aadil/GIT-IMAGES/blob/main/Black_and_pink_Circle_Music_Logo-removebg-preview.png?raw=true"
           height="120px"
           marginBottom="20px"
         />
@@ -180,12 +186,21 @@ function App({ signOut }) {
         }
       >
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="upload" element={<UploadAlbum />} />
-        <Route path="edit" element={<EditAlbum />} />
-        {/* New Routes for artists */}
-        <Route path="artists/view" element={<ViewArtists />} />  {/* View all artists */}
-        <Route path="artists/upload" element={<UploadArtist />} /> {/* Upload a new artist */}
-        <Route path="artists/edit" element={<EditArtist />} />  {/* Edit existing artists */}
+        
+        {/* Album Routes */}
+        <Route path="albums/view" element={<ViewAlbums />} />
+        <Route path="albums/upload" element={<UploadAlbum />} />
+        <Route path="albums/edit" element={<EditAlbums />} />
+        
+        {/* Artist Routes */}
+        <Route path="artists/view" element={<ViewArtists />} />
+        <Route path="artists/upload" element={<UploadArtist />} />
+        <Route path="artists/edit" element={<EditArtists />} />
+        
+        {/* Genre Routes */}
+        <Route path="genres/view" element={<ViewGenres />} />
+        <Route path="genres/upload" element={<UploadGenre />} />
+        <Route path="genres/edit" element={<EditGenres />} />
       </Route>
     </Routes>
   );
