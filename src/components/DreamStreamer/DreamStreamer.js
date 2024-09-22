@@ -148,7 +148,7 @@ const DreamStreamer = ({ signOut }) => {
         {/* Logo */}
         <div className="text-3xl font-bold mb-6">
           <img
-            src="https://github.com/krm-aadil/GIT-IMAGES/blob/main/Black%20and%20Turquoise%20Circle%20Music%20Logo.png?raw=true"
+            src="https://github.com/krm-aadil/GIT-IMAGES/blob/main/Black_and_Turquoise_Circle_Music_Logo-removebg-preview.png?raw=true"
             alt="DreamStreamer Logo"
             className="w-16 h-16"
           />

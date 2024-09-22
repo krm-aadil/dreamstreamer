@@ -26,6 +26,10 @@ import ViewGenres from './components/Admin/ViewGenres';
 import UploadGenre from './components/Admin/UploadGenre'; 
 import EditGenres from './components/Admin/EditGenres'; 
 
+
+//import inventory report path
+import Inventory from './components/Admin/Inventory';
+
 Amplify.configure(awsExports);
 
 // Define custom purple theme
@@ -201,6 +205,9 @@ function App({ signOut }) {
         <Route path="genres/view" element={<ViewGenres />} />
         <Route path="genres/upload" element={<UploadGenre />} />
         <Route path="genres/edit" element={<EditGenres />} />
+
+        {/* Inventory Report */}
+        <Route path="inventory" element={<Inventory />} />
       </Route>
     </Routes>
   );

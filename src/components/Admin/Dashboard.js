@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Bar, Pie } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from 'chart.js';
+import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ArcElement } from 'chart.js';
+import { FaMusic, FaUsers, FaCompactDisc, FaChartLine, FaStar } from 'react-icons/fa';
+import { Avatar } from '@mui/material';
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ArcElement);
 
@@ -33,11 +27,10 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch albums, artists, genres, and tracks count
         const albumsResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-albums');
         const artistsResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-artists');
         const genresResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/dreamstreamer-genres');
-        const usersResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/user-stats'); // Add your actual user stats API endpoint here
+        const usersResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/user-stats'); 
         const popularTrackResponse = await axios.get('https://4kkivqmt2b.execute-api.us-east-1.amazonaws.com/prod/popular-track');
 
         const albums = albumsResponse.data;
@@ -51,7 +44,6 @@ const Dashboard = () => {
           tracksCount += album.tracks.length;
         });
 
-        // User analytics
         const totalUsers = userStats.userCount;
         const maleUsers = userStats.users.filter(user => user.gender === 'male').length;
         const femaleUsers = userStats.users.filter(user => user.gender === 'female').length;
@@ -86,13 +78,11 @@ const Dashboard = () => {
           mostPopularAlbum: popularTrackData.mostPopularAlbum,
         });
 
-        // Prepare album data for bar chart
         const albumChartData = albums.map((album) => ({
           name: album.albumName,
           tracks: album.tracks.length,
         }));
 
-        // Prepare artist data for pie chart
         const artistChartData = artists.map((artist) => artist.artistName);
 
         setAlbumData(albumChartData);
@@ -134,82 +124,79 @@ const Dashboard = () => {
     ],
   };
 
-  // Pie Chart for Gender Distribution
-  const genderPieChartData = {
-    labels: ['Male', 'Female'],
-    datasets: [
-      {
-        label: 'Gender Distribution',
-        data: [stats.maleUsers, stats.femaleUsers],
-        backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'],
-      },
-    ],
-  };
-
-  // Bar Chart for Age Distribution
-  const ageBarChartData = {
-    labels: ['18-25', '26-35', '36-45', '46+'],
-    datasets: [
-      {
-        label: 'Age Distribution',
-        data: Object.values(stats.ageDistribution),
-        backgroundColor: 'rgba(153, 102, 255, 0.6)',
-      },
-    ],
-  };
-
   return (
-    <div className="p-6">
-      <h2 className="text-3xl font-bold mb-6 text-white">Dashboard</h2>
+    <div className="p-6 bg-cyan-100 min-h-screen">
+      <h2 className="text-4xl font-bold text-cyan-800 mb-6">Dashboard</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="p-4 bg-gray-800 text-white rounded shadow-md">
-          <h3 className="text-xl font-semibold">Total Albums</h3>
-          <p className="text-3xl">{stats.albums}</p>
+        <div className="p-6 bg-cyan-600 text-white rounded-lg shadow-lg flex items-center space-x-4">
+          <FaCompactDisc className="text-4xl" />
+          <div>
+            <h3 className="text-lg font-semibold">Total Albums</h3>
+            <p className="text-3xl font-bold">{stats.albums}</p>
+          </div>
         </div>
-        <div className="p-4 bg-gray-800 text-white rounded shadow-md">
-          <h3 className="text-xl font-semibold">Total Artists</h3>
-          <p className="text-3xl">{stats.artists}</p>
+        <div className="p-6 bg-cyan-600 text-white rounded-lg shadow-lg flex items-center space-x-4">
+          <FaUsers className="text-4xl" />
+          <div>
+            <h3 className="text-lg font-semibold">Total Artists</h3>
+            <p className="text-3xl font-bold">{stats.artists}</p>
+          </div>
         </div>
-        <div className="p-4 bg-gray-800 text-white rounded shadow-md">
-          <h3 className="text-xl font-semibold">Total Genres</h3>
-          <p className="text-3xl">{stats.genres}</p>
+        <div className="p-6 bg-cyan-600 text-white rounded-lg shadow-lg flex items-center space-x-4">
+          <FaMusic className="text-4xl" />
+          <div>
+            <h3 className="text-lg font-semibold">Total Genres</h3>
+            <p className="text-3xl font-bold">{stats.genres}</p>
+          </div>
         </div>
-        <div className="p-4 bg-gray-800 text-white rounded shadow-md">
-          <h3 className="text-xl font-semibold">Total Tracks</h3>
-          <p className="text-3xl">{stats.tracks}</p>
+        <div className="p-6 bg-cyan-600 text-white rounded-lg shadow-lg flex items-center space-x-4">
+          <FaChartLine className="text-4xl" />
+          <div>
+            <h3 className="text-lg font-semibold">Total Tracks</h3>
+            <p className="text-3xl font-bold">{stats.tracks}</p>
+          </div>
         </div>
-        <div className="p-4 bg-gray-800 text-white rounded shadow-md">
-          <h3 className="text-xl font-semibold">Total Users</h3>
-          <p className="text-3xl">{stats.users}</p>
+        <div className="p-6 bg-cyan-600 text-white rounded-lg shadow-lg flex items-center space-x-4">
+          <FaUsers className="text-4xl" />
+          <div>
+            <h3 className="text-lg font-semibold">Total Users</h3>
+            <p className="text-3xl font-bold">{stats.users}</p>
+          </div>
         </div>
       </div>
 
       {/* Popular Track and Album */}
       {stats.mostPopularTrack && stats.mostPopularAlbum && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div className="p-4 bg-gray-800 text-white rounded shadow-md">
+          <div className="p-6 bg-cyan-600 text-white rounded-lg shadow-lg">
             <h3 className="text-xl font-semibold">Most Popular Track</h3>
-            <p className="text-lg">Track Name: {stats.mostPopularTrack.trackName}</p>
+            <p className="text-lg mt-2">Track Name: {stats.mostPopularTrack.trackName}</p>
             <p className="text-lg">Play Count: {stats.mostPopularTrack.playCount}</p>
             <audio controls src={stats.mostPopularTrack.trackUrl} className="mt-4 w-full" />
           </div>
 
-          <div className="p-4 bg-gray-800 text-white rounded shadow-md">
+          <div className="p-6 bg-cyan-600 text-white rounded-lg shadow-lg">
             <h3 className="text-xl font-semibold">Most Popular Album</h3>
-            <p className="text-lg">Album Name: {stats.mostPopularAlbum.albumName}</p>
-            <img src={stats.mostPopularAlbum.albumArtUrl} alt="Album Art" className="w-full h-auto mt-4" />
+            <p className="text-lg mt-2">Album Name: {stats.mostPopularAlbum.albumName}</p>
+            <Avatar
+              src={stats.mostPopularAlbum.albumArtUrl}
+              alt="Album Art"
+              variant="rounded"
+              sx={{ width: 128, height: 128 }}
+              className="mt-4 mx-auto"
+            />
           </div>
         </div>
       )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-800 p-4 rounded shadow-md">
+        <div className="bg-cyan-600 p-6 rounded-lg shadow-lg">
           <h3 className="text-xl font-semibold text-white mb-4">Number of Tracks per Album</h3>
           <Bar data={albumBarChartData} />
         </div>
 
-        <div className="bg-gray-800 p-4 rounded shadow-md">
+        <div className="bg-cyan-600 p-6 rounded-lg shadow-lg">
           <h3 className="text-xl font-semibold text-white mb-4">Artists Distribution</h3>
           <Pie data={artistPieChartData} />
         </div>
